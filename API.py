@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import loaf
+import datetime
 
 app = Flask(__name__)
 CORS(app)
@@ -16,20 +17,36 @@ loaf.bake(
 # Obtener todas las peliculas
 @app.route('/dashboard')
 def dashboard():
-    peliculas = loaf.query('''  SELECT director.nombre, PD.titulo, PD.duracion
+    peliculas = list(loaf.query('''  SELECT director.nombre, PD.titulo, PD.duracion, PD.peliculaID
                                 FROM (SELECT P.titulo, P.duracion, P.peliculaID, directorID FROM
                                     (SELECT titulo, duracion, peliculaID FROM pelicula) AS P
                                     INNER JOIN dirige ON P.peliculaID = dirige.peliculaID) AS PD
-                                INNER JOIN director ON PD.directorID = director.directorID''')
+                                INNER JOIN director ON PD.directorID = director.directorID'''))
 
     if not peliculas:
         return jsonify({
             'success': 'False',
             'message': 'No hay peliculas registradas'
         })
+    
+    listaPeliculas = []
+
+    for i in range(len(peliculas)):
+        listaPeliculas.append({
+            'Pelicula': {
+                'peliculaID': peliculas[i][3],
+                'titulo': peliculas[i][1],
+                'director': peliculas[i][0],
+                'duracion': str(datetime.timedelta(seconds=peliculas[i][2]))
+            }
+        })
+
+    return jsonify({
+        'peliculas': listaPeliculas
+    })
 
 # Obtener todas las peliculas de la misma categoria
-app.route('dashboard_filtrado')
+@app.route('/dashboard_filtrado')
 def dashboard_filtrado():
     categoria = request.args.get('categoria')
 
@@ -41,9 +58,9 @@ def dashboard_filtrado():
 
     categoriaID = loaf.query(f''' SELECT categoriaid  
                                 FROM categoria
-                                WHERE descripcion = '{categoria}' ''')
-
-    peliculas = loaf.query(f''' SELECT director.nombre, PD.titulo, PD.duracion
+                                WHERE descripcion = '{categoria}' ''')[0][0]
+    
+    peliculas = loaf.query(f''' SELECT director.nombre, PD.titulo, PD.duracion, PD.peliculaID
                                 FROM (SELECT P.titulo, P.duracion, P.peliculaID, directorID
                                     FROM (SELECT pelicula.titulo, CP.peliculaID, pelicula.duracion
                                         FROM pelicula INNER JOIN (SELECT peliculaID FROM pelicula_categoria 
@@ -58,6 +75,22 @@ def dashboard_filtrado():
             'success': 'False',
             'message': 'No hay peliculas registradas de esta categoria'
         })
+    
+    listaPeliculas = []
+
+    for i in range(len(peliculas)):
+        listaPeliculas.append({
+            'Pelicula': {
+                'peliculaID': peliculas[i][3],
+                'titulo': peliculas[i][1],
+                'director': peliculas[i][0],
+                'duracion': str(datetime.timedelta(seconds=peliculas[i][2]))
+            }
+        })
+
+    return jsonify({
+        'peliculas': listaPeliculas
+    })
 
 
 @app.route('/registrar_pelicula')
@@ -84,13 +117,13 @@ def registrar_pelicula():
     
     # Checar si director y protagonista ya existen si no agregarlos
 
-@app.route('del_pelicula')
+@app.route('/del_pelicula')
 def del_pelicula():
     pid = request.args.get('pid')
 
     return jsonify(pid)
 
-@app.route('modify_pelicula')
+@app.route('/modify_pelicula')
 def modify_pelicula():
     pid = request.args.get('pid')
     titulo = request.args.get('titulo')
@@ -101,16 +134,44 @@ def modify_pelicula():
 
     return jsonify(pid, titulo, dur, director, categoria, protag)
 
-@app.route('filtrar_categoria')
-def filtrar_categoria():
-    categoria = request.args.get('categoria')
-
-    return jsonify(categoria)
-
-@app.route('buscar')
+@app.route('/buscar')
 def buscar():
     busc = request.args.get('param')
 
     # checar si busc = titulo, director o protagonista
+    q = loaf.query(''' SELECT PP.peliculaID, PP.titulo, PP.nombre, PP.duracion, protagonista.nombre
+                            FROM (SELECT actua.protagonistaID, PID.titulo, PID.nombre, PID.duracion, PID.peliculaID 
+                                FROM    (SELECT PD.titulo, director.nombre, PD.duracion, PD.peliculaID
+                                            FROM (SELECT P.titulo, P.duracion, P.peliculaID, directorID FROM
+                                                (SELECT titulo, duracion, peliculaID FROM pelicula) AS P
+                                                INNER JOIN dirige ON P.peliculaID = dirige.peliculaID) AS PD
+                                        INNER JOIN director ON PD.directorID = director.directorID) AS PID
+                                INNER JOIN actua ON PID.peliculaID = actua.peliculaID ) AS PP
+                            INNER JOIN protagonista ON protagonista.protagonistaID = PP.protagonistaID ''')
 
-    return jsonify(busc)
+    #print(q)
+
+    listaPeliculas = []
+
+    for i in range(len(q)):
+        listaPeliculas.append({
+            'Pelicula': {
+                'peliculaID': q[i][0],
+                'titulo': q[i][1],
+                'director': q[i][2],
+                'duracion': str(datetime.timedelta(seconds=q[i][3])),
+                'protagonista': q[i][4]
+            }
+        })
+    
+    resultados = []
+    idPelis = []
+    
+    for i in range(len(listaPeliculas)):
+        pass
+
+    return jsonify({'peliculas': listaPeliculas})
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
