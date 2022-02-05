@@ -56,9 +56,15 @@ def dashboard_filtrado():
             'message': 'Selecciona la categoria'
         })
 
-    categoriaID = loaf.query(f''' SELECT categoriaid  
+    try:
+        categoriaID = loaf.query(f''' SELECT categoriaid  
                                 FROM categoria
                                 WHERE descripcion = '{categoria}' ''')[0][0]
+    except IndexError:
+        return jsonify({
+                'success': 'False',
+                'message': 'La categoria no existe'
+            })
     
     peliculas = loaf.query(f''' SELECT director.nombre, PD.titulo, PD.duracion, PD.peliculaID
                                 FROM (SELECT P.titulo, P.duracion, P.peliculaID, directorID
@@ -168,6 +174,8 @@ def buscar():
     idPelis = []
     
     for i in range(len(listaPeliculas)):
+        # Checar si el parametro coincide con 
+        # nombre de autor/director o titulo
         pass
 
     return jsonify({'peliculas': listaPeliculas})
