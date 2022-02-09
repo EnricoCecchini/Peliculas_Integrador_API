@@ -6,13 +6,14 @@ import requests
 # categoria = 'Terror'
 # protag = 'Daniel Radcliffe'
 
-titulo = 'Avengers Endgame'
+titulo = 'Harry Potter'
 dur = '2:39'
-director = 'Hermanos Russo'
+anio = 2001
+director = 'J.K Rowling'
 categoria = 1
-protag = 'Robert Downey JR'
+protag = 'Daniel Radcliffe'
 
-url = f'http://127.0.0.1:5000/registrar_pelicula?titulo={titulo}&dur={dur}&director={director}&categoria={categoria}&protag={protag}'
+url = f'http://127.0.0.1:5000/registrar_pelicula?titulo={titulo}&anio={anio}&dur={dur}&director={director}&categoria={categoria}&protag={protag}'
 
 print(url)
 #requests.post(url)
