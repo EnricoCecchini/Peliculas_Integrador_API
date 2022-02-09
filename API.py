@@ -333,9 +333,13 @@ def buscar():
     #return jsonify(q)
 
     listaPeliculas = []
-    #f'{int(peliculas[i][2])//60}:{int(peliculas[i][2])%60}'
+
+    ''' NO SE AGREAG LA PELICULA QUE CUMPLE CON PARAMETRO A LA LISTA '''
     for i in range(len(q)):
-        if busc in str(q[i][1]) or busc in str(q[i][2]):
+        tit = q[i][2]
+        dirNom = q[i][1]
+
+        if busc in tit or busc in dirNom:
             listaPeliculas.append({
                 'Pelicula': {
                     'peliculaID': q[i][0],
