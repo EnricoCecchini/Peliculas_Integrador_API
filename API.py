@@ -22,6 +22,11 @@ def dashboard():
                                             INNER JOIN dirige ON P.peliculaID = dirige.peliculaID) AS PD
                                     INNER JOIN director ON PD.directorID = director.directorID '''))
 
+    qActores = loaf.query(''' SELECT PID.protagonistaID, PID.peliculaID, nombre
+                                FROM protagonista INNER JOIN 
+                                    (SELECT protagonistaID, peliculaID FROM actua) as PID
+                                ON protagonista.protagonistaID = PID.protagonistaID''')
+                        
     if not peliculas:
         return jsonify({
             'success': 'False',
@@ -31,12 +36,24 @@ def dashboard():
     listaPeliculas = []
 
     for i in range(len(peliculas)):
+        actores = []
+        for actor in range(len(qActores)):
+            idActor = qActores[actor][1]
+            idPeli = peliculas[i][3]
+
+            if idActor == idPeli:
+                actores.append({
+                    'nombre: ': qActores[actor][2],
+                    'protagID': qActores[actor][0]
+                })
+
         listaPeliculas.append({
             'Pelicula': {
                 'peliculaID': peliculas[i][3],
                 'titulo': peliculas[i][1],
                 'director': peliculas[i][0],
-                'duracion': f'{int(peliculas[i][2])//60}:{int(peliculas[i][2])%60}'
+                'duracion': f'{int(peliculas[i][2])//60}:{int(peliculas[i][2])%60}',
+                'protagonista': actores
             }
         })
 
@@ -75,6 +92,11 @@ def dashboard_filtrado():
                                 INNER JOIN director ON PD.directorID = director.directorID
                             ''')
     
+    qActores = loaf.query(''' SELECT PID.protagonistaID, PID.peliculaID, nombre
+                                FROM protagonista INNER JOIN 
+                                    (SELECT protagonistaID, peliculaID FROM actua) as PID
+                                ON protagonista.protagonistaID = PID.protagonistaID''')
+    
     if not peliculas:
         return jsonify({
             'success': 'False',
@@ -84,12 +106,24 @@ def dashboard_filtrado():
     listaPeliculas = []
 
     for i in range(len(peliculas)):
+        actores = []
+        for actor in range(len(qActores)):
+            idActor = qActores[actor][1]
+            idPeli = peliculas[i][3]
+
+            if idActor == idPeli:
+                actores.append({
+                    'nombre: ': qActores[actor][2],
+                    'protagID': qActores[actor][0]
+                })
+
         listaPeliculas.append({
             'Pelicula': {
                 'peliculaID': peliculas[i][3],
                 'titulo': peliculas[i][1],
                 'director': peliculas[i][0],
-                'duracion': f'{int(peliculas[i][2])//60}:{int(peliculas[i][2])%60}'
+                'duracion': f'{int(peliculas[i][2])//60}:{int(peliculas[i][2])%60}',
+                'protagonista': actores
             }
         })
 
@@ -329,8 +363,14 @@ def buscar():
                             FROM (SELECT titulo, duracion, peliculaID, ano FROM pelicula) AS P
                                 INNER JOIN dirige ON P.peliculaID = dirige.peliculaID) AS PD
                         INNER JOIN director ON PD.directorID = director.directorID ''')
-
-    #return jsonify(q)
+    
+    qActores = loaf.query(''' SELECT PID.protagonistaID, PID.peliculaID, nombre
+                            FROM protagonista INNER JOIN 
+                                (SELECT protagonistaID, peliculaID FROM actua) as PID
+                            ON protagonista.protagonistaID = PID.protagonistaID''')
+    
+    #return jsonify(qActores[0][0])
+    #return jsonify(q[0][0])
 
     listaPeliculas = []
 
@@ -338,6 +378,16 @@ def buscar():
     for i in range(len(q)):
         tit = q[i][2]
         dirNom = q[i][1]
+        actores = []
+        for actor in range(len(qActores)):
+            idActor = qActores[actor][1]
+            idPeli = q[i][0]
+
+            if idActor == idPeli:
+                actores.append({
+                    'nombre: ': qActores[actor][2],
+                    'protagID': qActores[actor][0]
+                })
 
         if busc in tit or busc in dirNom:
             listaPeliculas.append({
@@ -346,7 +396,8 @@ def buscar():
                     'director': q[i][1],
                     'titulo': q[i][2],
                     'duracion': str(f'{int(q[i][3])//60}:{int(q[i][3])%60}'),
-                    'anio': q[i][4]
+                    'anio': q[i][4],
+                    'protagonista': actores
                 }
             })
     
