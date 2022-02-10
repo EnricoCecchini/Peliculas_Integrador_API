@@ -154,10 +154,10 @@ def registrar_pelicula():
     anio = request.args.get('anio')
     dur = request.args.get('dur')
     director = request.args.get('director')
-    categoria = request.args.get('categoria')
-    protag = request.args.get('protag')
+    categoria = request.args.get('categoriaid')
+    protag = request.args.get('protag').split(',')
 
-    if not (titulo and dur and director and categoria and protag):
+    if not (titulo and anio and dur and director and categoria and protag):
         return jsonify({
             'success': 'False',
             'message': 'Faltan campos'
@@ -185,94 +185,54 @@ def registrar_pelicula():
             'message': 'La pelicula ya esta registrada'
         })
 
-    try:
-        protagID = loaf.query(f''' SELECT protagonistaID FROM protagonista WHERE nombre='{protag}' ''')[0][0]
-    except IndexError:
-        protagID = False
+    protags = []
+    for p in protag:
+        try:
+            protagID = loaf.query(f''' SELECT protagonistaID FROM protagonista WHERE nombre='{p}' ''')[0][0]
+        except IndexError:
+            protagID = False
+
+        protags.append({
+                'nombre': p,
+                'protagID': protagID
+            })
+    
+    #return jsonify(protag[0]['nombre'])
+
+    actorIDS = []
+
+    for p in protags:
+        try:
+            idExists = loaf.query(f''' SELECT protagonistaID FROM protagonista WHERE nombre = '{p['nombre']}' ''')[0][0]
+            actorIDS.append(idExists)
+        except IndexError:
+            loaf.query(f''' INSERT INTO protagonista (nombre)
+                        VALUES ('{p['nombre']}') ''')
+            p['protagID'] = loaf.query(f''' SELECT protagonistaID FROM protagonista WHERE nombre = '{p['nombre']}' ''')[0][0]
+            actorIDS.append(p['protagID'])
         
-    if directorID and protagID:
-        directorID = directorID[0][0]
-        loaf.query(f'''INSERT INTO pelicula (titulo, duracion, ano)
-                        VALUES ('{titulo}', '{durMin}', '{anio}') ''')
+    loaf.query(f''' INSERT INTO pelicula (titulo, duracion, ano)
+                    VALUES ('{titulo}', '{durMin}', '{anio}') ''')
                 
-        peliculaID = loaf.query(f''' SELECT peliculaID FROM pelicula WHERE titulo = '{titulo}' AND ano = '{anio}' ''')[0][0]
-        
-        loaf.query(f''' INSERT INTO actua (peliculaID, protagonistaID)
-                    VALUES ('{peliculaID}', '{protagID}') ''')
-        
-        loaf.query(f''' INSERT INTO dirige (peliculaID, directorID)
-                    VALUES ('{peliculaID}', '{directorID}')''')
-        
-        loaf.query(f''' INSERT INTO movie_cat (peliculaID, categoriaID)
+    peliculaID = loaf.query(f''' SELECT peliculaID FROM pelicula WHERE titulo = '{titulo}' AND ano = '{anio}' ''')[0][0]
+    
+    if not directorID:
+        loaf.query(f''' INSERT INTO director (nombre)
+                        VALUES ('{director}') ''')
+
+        directorID = loaf.query(f''' SELECT directorID FROM director WHERE nombre = '{director}' ''')
+
+    did = directorID[0][0]
+
+    loaf.query(f''' INSERT INTO dirige (peliculaID, directorID)
+                    VALUES ('{peliculaID}', '{did}')''')
+
+    loaf.query(f''' INSERT INTO movie_cat (peliculaID, categoriaID)
                     VALUES ('{peliculaID}', '{categoria}') ''')
     
-    elif directorID and not protagID:
-        directorID = directorID[0][0]
-        
-        loaf.query(f'''INSERT INTO pelicula (titulo, duracion, ano)
-                        VALUES ('{titulo}', '{durMin}', '{anio}') ''')
-                
-        peliculaID = loaf.query(f''' SELECT peliculaID FROM pelicula WHERE titulo = '{titulo}' AND ano = '{anio}' ''')[0][0]
-        
-        loaf.query(f''' INSERT INTO protagonista (nombre)
-                    VALUES ('{protag}') ''')
-
-        protagID = loaf.query(f''' SELECT protagonistaID FROM protagonista WHERE nombre = '{protag}' ''')[0][0]
-
+    for id in actorIDS:
         loaf.query(f''' INSERT INTO actua (peliculaID, protagonistaID)
-                    VALUES ('{peliculaID}', '{protagID}') ''')
-        
-        loaf.query(f''' INSERT INTO dirige (peliculaID, directorID)
-                    VALUES ('{peliculaID}', '{directorID}')''')
-        
-        loaf.query(f''' INSERT INTO movie_cat (peliculaID, categoriaID)
-                    VALUES ('{peliculaID}', '{categoria}') ''')
-    
-    elif protagID and not directorID:
-        loaf.query(f'''INSERT INTO pelicula (titulo, duracion, ano)
-                        VALUES ('{titulo}', '{durMin}', '{anio}') ''')
-                
-        peliculaID = loaf.query(f''' SELECT peliculaID FROM pelicula WHERE titulo = '{titulo}' AND ano = '{anio}' ''')[0][0]
-
-        
-        loaf.query(f''' INSERT INTO director (nombre)
-                    VALUES ('{director}') ''')
-
-        directorID = loaf.query(f''' SELECT directorID FROM director WHERE nombre = '{director}' ''')[0][0]
-        
-        loaf.query(f''' INSERT INTO actua (peliculaID, protagonistaID)
-                    VALUES ('{peliculaID}', '{protagID}') ''')
-        
-        loaf.query(f''' INSERT INTO dirige (peliculaID, directorID)
-                    VALUES ('{peliculaID}', '{directorID}')''')
-        
-        loaf.query(f''' INSERT INTO movie_cat (peliculaID, categoriaID)
-                    VALUES ('{peliculaID}', '{categoria}') ''')
-
-    else:
-        loaf.query(f'''INSERT INTO pelicula (titulo, duracion, ano)
-                        VALUES ('{titulo}', '{durMin}', '{anio}') ''')
-                
-        peliculaID = loaf.query(f''' SELECT peliculaID FROM pelicula WHERE titulo = '{titulo}' AND ano = '{anio}' ''')[0][0]
-
-        loaf.query(f''' INSERT INTO protagonista (nombre)
-                    VALUES ('{protag}') ''')
-
-        protagID = loaf.query(f''' SELECT protagonistaID FROM protagonista WHERE nombre = '{protag}' ''')[0][0]
-        
-        loaf.query(f''' INSERT INTO director (nombre)
-                    VALUES ('{director}') ''')
-
-        directorID = loaf.query(f''' SELECT directorID FROM director WHERE nombre = '{director}' ''')[0][0]
-        
-        loaf.query(f''' INSERT INTO actua (peliculaID, protagonistaID)
-                    VALUES ('{peliculaID}', '{protagID}') ''')
-        
-        loaf.query(f''' INSERT INTO dirige (peliculaID, directorID)
-                    VALUES ('{peliculaID}', '{directorID}')''')
-        
-        loaf.query(f''' INSERT INTO movie_cat (peliculaID, categoriaID)
-                    VALUES ('{peliculaID}', '{categoria}') ''')
+                        VALUES ('{peliculaID}', '{id}') ''') 
     
     return jsonify({
         'success': 'True',

@@ -6,13 +6,12 @@ import requests
 # categoria = 'Terror'
 # protag = 'Daniel Radcliffe'
 
-pid = 31
-titulo = 'Avengers'
+titulo = 'Esward SCissorhands'
 dur = '2:39'
-anio = 2001
-director = 'J.K Rowling'
+anio = 2011
+director = 'Tim Burton'
 categoriaid = 3
-protag = 'Daniel Radcliffe'
+protag = 'Daniel Radcliffe,Jack Sparrow'
 
 url = f'http://127.0.0.1:5000/registrar_pelicula?titulo={titulo}&anio={anio}&dur={dur}&director={director}&categoriaid={categoriaid}&protag={protag}'
 
