@@ -11,5 +11,5 @@ API para aplicacion de peliculas de Proyecto Integrador
 - [x] Eliminar Pelicula
 - [x] Get lista de categorias
 - [x] Get peliculas con sus protagonistas
-- [ ] Registrar varios protagonistas para la misma pelicula
+- [x] Registrar varios protagonistas para la misma pelicula
 
