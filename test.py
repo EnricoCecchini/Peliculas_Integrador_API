@@ -6,12 +6,12 @@ import requests
 # categoria = 'Terror'
 # protag = 'Daniel Radcliffe'
 
-titulo = 'Esward SCissorhands'
-dur = '2:39'
-anio = 2011
-director = 'Tim Burton'
+titulo = 'Avengers 3'
+dur = '1:39'
+anio = 2018
+director = 'James Gunn'
 categoriaid = 3
-protag = 'Daniel Radcliffe,Jack Sparrow'
+protag = 'Robert Downey JR,Chris Evans, Natasha Romanoff'
 
 url = f'http://127.0.0.1:5000/registrar_pelicula?titulo={titulo}&anio={anio}&dur={dur}&director={director}&categoriaid={categoriaid}&protag={protag}'
 

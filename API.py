@@ -166,6 +166,12 @@ def registrar_pelicula():
     dur = dur.split(':')
     durMin = int(dur[0]) * 60 + int(dur[1])
 
+    if durMin < 30:
+        return jsonify({
+            'success': 'False',
+            'message': 'Duracion invalida',
+        })
+
     peliculaExists = False
     
     # Checar si director y protagonista ya existen si no agregarlos
@@ -197,8 +203,6 @@ def registrar_pelicula():
                 'protagID': protagID
             })
     
-    #return jsonify(protag[0]['nombre'])
-
     actorIDS = []
 
     for p in protags:
@@ -211,6 +215,14 @@ def registrar_pelicula():
             p['protagID'] = loaf.query(f''' SELECT protagonistaID FROM protagonista WHERE nombre = '{p['nombre']}' ''')[0][0]
             actorIDS.append(p['protagID'])
         
+    peliculaID = loaf.query(f''' SELECT peliculaID FROM pelicula WHERE titulo = '{titulo}' AND ano = '{anio}' ''')
+
+    if peliculaID:
+        return jsonify({
+            'success': 'False',
+            'message': 'La pelicula ya esta registrada'
+        })
+
     loaf.query(f''' INSERT INTO pelicula (titulo, duracion, ano)
                     VALUES ('{titulo}', '{durMin}', '{anio}') ''')
                 
@@ -329,12 +341,8 @@ def buscar():
                                 (SELECT protagonistaID, peliculaID FROM actua) as PID
                             ON protagonista.protagonistaID = PID.protagonistaID''')
     
-    #return jsonify(qActores[0][0])
-    #return jsonify(q[0][0])
-
     listaPeliculas = []
 
-    ''' NO SE AGREAG LA PELICULA QUE CUMPLE CON PARAMETRO A LA LISTA '''
     for i in range(len(q)):
         tit = q[i][2]
         dirNom = q[i][1]
@@ -348,10 +356,8 @@ def buscar():
                     'nombre: ': qActores[actor][2],
                     'protagID': qActores[actor][0]
                 })
-
-        if busc in tit or busc in dirNom:
-            listaPeliculas.append({
-                'Pelicula': {
+        
+        pelicula = {
                     'peliculaID': q[i][0],
                     'director': q[i][1],
                     'titulo': q[i][2],
@@ -359,6 +365,10 @@ def buscar():
                     'anio': q[i][4],
                     'protagonista': actores
                 }
+
+        if busc.lower() in tit.lower() or busc.lower() in dirNom.lower():
+            listaPeliculas.append({
+                'Pelicula': pelicula
             })
     
     return jsonify(listaPeliculas)
