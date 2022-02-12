@@ -19,3 +19,6 @@ url = f'http://127.0.0.1:5000/registrar_pelicula?titulo={titulo}&anio={anio}&dur
 
 print(url)
 #requests.post(url)
+
+t = 'Robert, Holland,John'.replace(', ', ',').split(',')
+print(t)

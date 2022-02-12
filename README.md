@@ -12,4 +12,5 @@ API para aplicacion de peliculas de Proyecto Integrador
 - [x] Get lista de categorias
 - [x] Get peliculas con sus protagonistas
 - [x] Registrar varios protagonistas para la misma pelicula
+- [x] Get datos de pelicula seleccionada
 

@@ -48,7 +48,7 @@ def dashboard():
 
             if idActor == idPeli:
                 actores.append({
-                    'nombre: ': qActores[actor][2],
+                    'nombre': qActores[actor][2],
                     'protagID': qActores[actor][0]
                 })
 
@@ -127,7 +127,7 @@ def dashboard_filtrado():
             peliculas[i][3]: {
                 'peliculaID': peliculas[i][3],
                 'titulo': peliculas[i][1],
-                'anio': peliculas[i][4],
+                #'anio': peliculas[i][4],
                 'director': peliculas[i][0],
                 'duracion': f'{int(peliculas[i][2])//60}:{int(peliculas[i][2])%60}',
                 'protagonista': actores
@@ -154,15 +154,80 @@ def get_categorias():
         'categorias': listaCat
     })
 
+@app.route('/get_pelicula')
+def get_pelicula():
+    pid = request.args.get('pid')
+
+    if not pid:
+        return jsonify({
+            'success': 'False',
+            'message': 'Falta ID de pelicula'
+        })
+    
+    exists = loaf.query(f''' SELECT peliculaID from pelicula WHERE peliculaID = {pid} ''')
+    
+    if not exists:
+        return jsonify({
+            'success': 'False',
+            'message': 'La pelicula no esta registrada'
+        })
+
+    p = loaf.query(f''' SELECT nombre, D.directorID, D.descripcion, D.categoriaID, D.peliculaID, D.titulo, D.duracion, D.ano
+                                FROM director
+                                INNER JOIN (SELECT directorID, PD.descripcion, PD.categoriaID, PD.peliculaID, PD.titulo, PD.duracion, PD.ano
+                                FROM dirige 
+                                INNER JOIN (SELECT descripcion, PC.categoriaID, PC.peliculaID, PC.titulo, PC.duracion, PC.ano
+                                            FROM categoria 
+                                            INNER JOIN (SELECT categoriaID, P.peliculaID, titulo, duracion, ano
+                                                FROM movie_cat INNER JOIN 
+                                                    (SELECT peliculaID, titulo, duracion, ano
+                                                        FROM pelicula WHERE peliculaID = {pid}) AS P
+                                                ON movie_cat.peliculaID = P.peliculaID) AS PC
+                                            ON categoria.categoriaID = PC.categoriaID) AS PD
+                                        ON PD.peliculaID = dirige.peliculaID) AS D
+                                ON director.directorID = D.directorID
+                        ''')[0]
+    
+    qActores = loaf.query(f''' SELECT PID.protagonistaID, PID.peliculaID, nombre
+                                FROM protagonista INNER JOIN 
+                                    (SELECT protagonistaID, peliculaID 
+                                        FROM actua 
+                                        WHERE peliculaID = {pid}) as PID
+                                ON protagonista.protagonistaID = PID.protagonistaID''')
+    
+    print('*'*15)
+    print(p)
+    print(qActores)
+
+    actores = []
+    for i in range(len(qActores)):
+        actores.append({
+            'nombre': qActores[i][2],
+            'protagID': qActores[i][2],
+        })
+
+    pelicula = {
+        'director': p[0],
+        'categoria': p[2],
+        'categoriaID': p[3],
+        'peliculaID': p[4],
+        'titulo': p[5],
+        'duracion': f'{int(p[6])//60}:{int(p[6])%60}',
+        'anio': p[7],
+        'protagonista': actores
+    }
+    
+    return jsonify(pelicula)
+
 
 @app.route('/registrar_pelicula')
 def registrar_pelicula():
     titulo = request.args.get('titulo')
-    anio = request.args.get('anio')
+    anio = request.args.get('ano')
     dur = request.args.get('dur')
     director = request.args.get('director')
-    categoria = request.args.get('categoriaid')
-    protag = request.args.get('protag').split(',')
+    categoria = request.args.get('cat')
+    protag = request.args.get('protag').replace(', ', ',').split(',')
 
     if not (titulo and anio and dur and director and categoria and protag):
         return jsonify({
@@ -361,13 +426,15 @@ def buscar():
         actores = []
         for actor in range(len(qActores)):
             idActor = qActores[actor][1]
-            idPeli = q[i][0]
+            idPeli = q[i][3]
 
             if idActor == idPeli:
                 actores.append({
                     'nombre: ': qActores[actor][2],
                     'protagID': qActores[actor][0]
                 })
+            
+            #print(idActor)
         
         pelicula = {
                     'peliculaID': q[i][3],
