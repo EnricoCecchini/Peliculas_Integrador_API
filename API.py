@@ -16,11 +16,16 @@ loaf.bake(
 # Obtener todas las peliculas
 @app.route('/dashboard')
 def dashboard():
-    peliculas = list(loaf.query(''' SELECT director.nombre, PD.titulo, PD.duracion, PD.peliculaID, PD.ano
-                                    FROM (SELECT P.titulo, P.duracion, P.peliculaID, P.ano, directorID 
-                                        FROM (SELECT titulo, duracion, peliculaID, ano FROM pelicula) AS P
-                                            INNER JOIN dirige ON P.peliculaID = dirige.peliculaID) AS PD
-                                    INNER JOIN director ON PD.directorID = director.directorID '''))
+    peliculas = list(loaf.query(''' SELECT MC2.nombre, MC2.titulo, MC2.duracion, MC2.peliculaID, MC2.ano, categoria.descripcion, MC2.categoriaID
+                                    FROM categoria
+                                    INNER JOIN (SELECT categoriaID, MC.nombre, MC.titulo, MC.duracion, MC.peliculaID, MC.ano
+                                        FROM movie_cat INNER JOIN ( SELECT director.nombre, PD.titulo, PD.duracion, PD.peliculaID, PD.ano
+                                            FROM (SELECT P.titulo, P.duracion, P.peliculaID, P.ano, directorID 
+                                                FROM (SELECT titulo, duracion, peliculaID, ano FROM pelicula) AS P
+                                                INNER JOIN dirige ON P.peliculaID = dirige.peliculaID) AS PD
+                                            INNER JOIN director ON PD.directorID = director.directorID ) AS MC
+                                        ON MC.peliculaID = movie_cat.peliculaID) AS MC2
+                                    ON categoria.categoriaID = MC2.categoriaID '''))
 
     qActores = loaf.query(''' SELECT PID.protagonistaID, PID.peliculaID, nombre
                                 FROM protagonista INNER JOIN 
@@ -48,14 +53,15 @@ def dashboard():
                 })
 
         listaPeliculas.append({
-            'Pelicula': {
                 'peliculaID': peliculas[i][3],
                 'titulo': peliculas[i][1],
+                'anio': peliculas[i][4],
                 'director': peliculas[i][0],
+                'categoria': peliculas[i][5],
+                'categoriaID': peliculas[i][6],
                 'duracion': f'{int(peliculas[i][2])//60}:{int(peliculas[i][2])%60}',
                 'protagonista': actores
-            }
-        })
+            })
 
     return jsonify({
         'peliculas': listaPeliculas
@@ -64,7 +70,7 @@ def dashboard():
 # Obtener todas las peliculas de la misma categoria
 @app.route('/dashboard_filtrado')
 def dashboard_filtrado():
-    categoriaID = request.args.get('categoria')
+    categoriaID = request.args.get('cat')
 
     if not categoriaID:
         return jsonify({
@@ -118,9 +124,10 @@ def dashboard_filtrado():
                 })
 
         listaPeliculas.append({
-            'Pelicula': {
+            peliculas[i][3]: {
                 'peliculaID': peliculas[i][3],
                 'titulo': peliculas[i][1],
+                'anio': peliculas[i][4],
                 'director': peliculas[i][0],
                 'duracion': f'{int(peliculas[i][2])//60}:{int(peliculas[i][2])%60}',
                 'protagonista': actores
@@ -330,11 +337,16 @@ def buscar():
     busc = str(request.args.get('param'))
 
     # checar si busc = titulo, director o protagonista
-    q = loaf.query('''  SELECT PD.peliculaID, director.nombre, PD.titulo, PD.duracion, PD.ano
-                        FROM (SELECT P.titulo, P.duracion, P.peliculaID, P.ano, directorID 
-                            FROM (SELECT titulo, duracion, peliculaID, ano FROM pelicula) AS P
-                                INNER JOIN dirige ON P.peliculaID = dirige.peliculaID) AS PD
-                        INNER JOIN director ON PD.directorID = director.directorID ''')
+    q = loaf.query(''' SELECT MC2.nombre, MC2.titulo, MC2.duracion, MC2.peliculaID, MC2.ano, categoria.descripcion, MC2.categoriaID
+                        FROM categoria
+                        INNER JOIN (SELECT categoriaID, MC.nombre, MC.titulo, MC.duracion, MC.peliculaID, MC.ano
+                            FROM movie_cat INNER JOIN ( SELECT director.nombre, PD.titulo, PD.duracion, PD.peliculaID, PD.ano
+                                FROM (SELECT P.titulo, P.duracion, P.peliculaID, P.ano, directorID 
+                                    FROM (SELECT titulo, duracion, peliculaID, ano FROM pelicula) AS P
+                                    INNER JOIN dirige ON P.peliculaID = dirige.peliculaID) AS PD
+                                INNER JOIN director ON PD.directorID = director.directorID ) AS MC
+                            ON MC.peliculaID = movie_cat.peliculaID) AS MC2
+                        ON categoria.categoriaID = MC2.categoriaID ''')
     
     qActores = loaf.query(''' SELECT PID.protagonistaID, PID.peliculaID, nombre
                             FROM protagonista INNER JOIN 
@@ -358,11 +370,13 @@ def buscar():
                 })
         
         pelicula = {
-                    'peliculaID': q[i][0],
-                    'director': q[i][1],
-                    'titulo': q[i][2],
-                    'duracion': str(f'{int(q[i][3])//60}:{int(q[i][3])%60}'),
+                    'peliculaID': q[i][3],
+                    'director': q[i][0],
+                    'titulo': q[i][1],
                     'anio': q[i][4],
+                    'categoria': q[i][5],
+                    'categoriaID': q[i][6],
+                    'duracion': str(f'{int(q[i][2])//60}:{int(q[i][2])%60}'),
                     'protagonista': actores
                 }
 
