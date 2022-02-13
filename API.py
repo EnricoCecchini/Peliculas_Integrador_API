@@ -239,10 +239,16 @@ def registrar_pelicula():
             'message': 'Faltan campos'
         })
     
-    dur = dur.split(':')
-    durMin = int(dur[0]) * 60 + int(dur[1])
+    try:
+        dur = dur.split(':')
+        dur = int(dur[0]) * 60 + int(dur[1])
+    except ValueError:
+        return jsonify({
+            'success': 'False',
+            'message': 'Duracion Invalida'
+        })
 
-    if durMin < 30:
+    if dur < 30:
         return jsonify({
             'success': 'False',
             'message': 'Duracion invalida',
@@ -300,7 +306,7 @@ def registrar_pelicula():
         })
 
     loaf.query(f''' INSERT INTO pelicula (titulo, duracion, ano)
-                    VALUES ('{titulo}', '{durMin}', '{anio}') ''')
+                    VALUES ('{titulo}', '{dur}', '{anio}') ''')
                 
     peliculaID = loaf.query(f''' SELECT peliculaID FROM pelicula WHERE titulo = '{titulo}' AND ano = '{anio}' ''')[0][0]
     
@@ -365,9 +371,14 @@ def modify_pelicula():
             'success': 'False',
             'message': 'Faltan campos'
         })
-
-    dur = dur.split(':')
-    dur = int(dur[0]) * 60 + int(dur[1])
+    try:
+        dur = dur.split(':')
+        dur = int(dur[0]) * 60 + int(dur[1])
+    except ValueError:
+        return jsonify({
+            'success': 'False',
+            'message': 'Duracion Invalida'
+        })
     
     directorID = loaf.query(f''' SELECT directorID FROM director WHERE nombre='{director}' ''')[0][0]
     
@@ -394,49 +405,20 @@ def modify_pelicula():
     print('*'*15)
     print(protagonistaID)
 
-    actores = loaf.query(f''' SELECT DISTINCT protagonistaID FROM actua WHERE peliculaID = {pid} ''')[0]
+    loaf.query (f''' DELETE FROM actua WHERE peliculaID = {pid}''')
     
     print('*'*15)
-    print('actores',actores)
-    
-    for p in range(len(protagonistaID)):
-        if protagonistaID[p] not in actores:
-            loaf.query(f''' INSERT INTO actua (peliculaID, protagonistaID)
-                        VALUES ('{pid}', '{protagonistaID[p]}') ''')
-    
-    if len(protagonistaID) < len(actores):
-        for p in range(len(protagonistaID)):
-            if protagonistaID[p] not in actores:
-                loaf.query(f''' DELETE FROM actua WHERE protagonistaID = {protagonistaID[p]} AND peliculaID = {pid} ''')
+    print('actores',protagonistaID)
 
-    # for actor in actores:
-    #     if actor not in protagonistaID:
-    #         loaf.query(f''' DELETE FROM actua WHERE protagonistaID = {actor} AND peliculaID = {pid} ''')
-    #     print('*'*15)
-    #     print('actor',actor)
-
+    for p in protagonistaID:
+        loaf.query(f''' INSERT INTO actua (peliculaID, protagonistaID)
+                            VALUES ('{pid}', '{p}') ''')
 
     if not bool(directorID):
         loaf.query(f''' INSERT INTO director(nombre)
                         Values('{director}')''')
         
         directorID = loaf.query(f''' SELECT directorID FROM director WHERE nombre='{director}' ''')[0][0]
-    
-    # for p in range(len(protag)):
-    #     existe = loaf.query(f''' SELECT protagonistaID FROM protagonista WHERE nombre='{protag[p]}' ''')
-
-    #     print('*'*15)
-    #     print(protag[p])
-        
-    #     if not bool(existe):
-    #         print('*'*15)
-    #         print('No Existe')
-    #         loaf.query(f''' INSERT INTO protagonista(nombre)
-    #                         Values('{protag[p]}')''')
-
-    #     id = loaf.query(f''' SELECT protagonistaID FROM protagonista WHERE nombre='{protag[p]}' ''')[0][0]
-    #     #return jsonify(id)
-    #     protagonistaID.append(id)
 
     print('*'*15)
     print(protagonistaID)
@@ -452,18 +434,6 @@ def modify_pelicula():
     loaf.query(f''' UPDATE movie_cat
                     SET categoriaID = '{categoriaID}'
                     WHERE peliculaID = {pid} ''')
-
-    # actores = loaf.query(f''' SELECT protagonistaID FROM actua WHERE peliculaID = {pid}''')
-    # for id in protagonistaID:
-    #     loaf.query(f''' UPDATE actua
-    #                     SET protagonistaID = '{id}', actualizado = 1
-    #                     WHERE peliculaID = {pid} AND actualizado != 1
-    #                     LIMIT 1
-    #                 ''')
-                    
-    # loaf.query(f''' UPDATE actua
-    #                 SET actualizado = 0
-    #             ''')
     
     return jsonify({
         'success': 'True',
