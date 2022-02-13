@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from itsdangerous import json
 import loaf
 
 app = Flask(__name__)
@@ -88,14 +89,16 @@ def dashboard_filtrado():
                 'message': 'La categoria no existe'
             })
     
-    peliculas = loaf.query(f''' SELECT director.nombre, PD.titulo, PD.duracion, PD.peliculaID
-                                FROM (SELECT P.titulo, P.duracion, P.peliculaID, directorID
-                                    FROM (SELECT pelicula.titulo, CP.peliculaID, pelicula.duracion
-                                        FROM pelicula INNER JOIN (SELECT peliculaID FROM movie_cat 
-                                            WHERE categoriaID = '{categoriaID}') AS CP
-                                        ON pelicula.peliculaID = CP.peliculaID) AS P
-                                    INNER JOIN dirige ON P.peliculaID = dirige.peliculaID) AS PD
-                                INNER JOIN director ON PD.directorID = director.directorID
+    peliculas = loaf.query(f''' SELECT MC2.nombre, MC2.titulo, MC2.duracion, MC2.peliculaID, MC2.ano, categoria.descripcion, MC2.categoriaID
+                                    FROM categoria
+                                    INNER JOIN (SELECT categoriaID, MC.nombre, MC.titulo, MC.duracion, MC.peliculaID, MC.ano
+                                        FROM movie_cat INNER JOIN ( SELECT director.nombre, PD.titulo, PD.duracion, PD.peliculaID, PD.ano
+                                            FROM (SELECT P.titulo, P.duracion, P.peliculaID, P.ano, directorID 
+                                                FROM (SELECT titulo, duracion, peliculaID, ano FROM pelicula) AS P
+                                                INNER JOIN dirige ON P.peliculaID = dirige.peliculaID) AS PD
+                                            INNER JOIN director ON PD.directorID = director.directorID ) AS MC
+                                        ON MC.peliculaID = movie_cat.peliculaID AND categoriaID = {categoriaID}) AS MC2
+                                    ON categoria.categoriaID = MC2.categoriaID
                             ''')
     
     qActores = loaf.query(''' SELECT PID.protagonistaID, PID.peliculaID, nombre
@@ -119,19 +122,20 @@ def dashboard_filtrado():
 
             if idActor == idPeli:
                 actores.append({
-                    'nombre: ': qActores[actor][2],
+                    'nombre': qActores[actor][2],
                     'protagID': qActores[actor][0]
                 })
 
         listaPeliculas.append({
-            peliculas[i][3]: {
-                'peliculaID': peliculas[i][3],
-                'titulo': peliculas[i][1],
-                #'anio': peliculas[i][4],
-                'director': peliculas[i][0],
-                'duracion': f'{int(peliculas[i][2])//60}:{int(peliculas[i][2])%60}',
-                'protagonista': actores
-            }
+            'peliculaID': peliculas[i][3],
+            'titulo': peliculas[i][1],
+            'anio': peliculas[i][4],
+            'director': peliculas[i][0],
+            'categoria': peliculas[i][5],
+            'categoriaID': peliculas[i][6],
+            'duracion': f'{int(peliculas[i][2])//60}:{int(peliculas[i][2])%60}',
+            'protagonista': actores
+
         })
 
     return jsonify({
@@ -203,7 +207,7 @@ def get_pelicula():
     for i in range(len(qActores)):
         actores.append({
             'nombre': qActores[i][2],
-            'protagID': qActores[i][2],
+            'protagID': qActores[i][0],
         })
 
     pelicula = {
@@ -217,7 +221,7 @@ def get_pelicula():
         'protagonista': actores
     }
     
-    return jsonify(pelicula)
+    return jsonify({'pelicula': pelicula})
 
 
 @app.route('/registrar_pelicula')
@@ -352,16 +356,65 @@ def modify_pelicula():
     dur = request.args.get('dur')
     director = request.args.get('director')
     categoriaID = request.args.get('categoriaid')
-    protag = request.args.get('protag')
+    protag = request.args.get('protag').split(',')
+    # print('*'*15)
+    # print(protag)
 
     if not (pid and titulo and anio and dur and director and categoriaID and protag):
         return jsonify({
             'success': 'False',
             'message': 'Faltan campos'
         })
+
+    dur = dur.split(':')
+    dur = int(dur[0]) * 60 + int(dur[1])
     
-    directorID = loaf.query(f''' SELECT directorID FROM director WHERE nombre='{director}' ''')
-    protagonistaID = loaf.query(f''' SELECT protagonistaID FROM protagonista WHERE nombre='{protag}' ''')
+    directorID = loaf.query(f''' SELECT directorID FROM director WHERE nombre='{director}' ''')[0][0]
+    
+    # print('*'*15)
+    # print(protag)
+
+    protagonistaID = []
+
+    #return jsonify(actores)
+
+    for p in range(len(protag)):
+        existe = loaf.query(f''' SELECT protagonistaID FROM protagonista WHERE nombre='{protag[p]}' ''')
+
+        if not bool(existe):
+            print('*'*15)
+            print('No Existe')
+            loaf.query(f''' INSERT INTO protagonista(nombre)
+                            Values('{protag[p]}')''')
+        
+        id = loaf.query(f''' SELECT DISTINCT protagonistaID FROM protagonista WHERE nombre='{protag[p]}' ''')[0][0]
+        #return jsonify(id)
+        protagonistaID.append(id)
+    
+    print('*'*15)
+    print(protagonistaID)
+
+    actores = loaf.query(f''' SELECT DISTINCT protagonistaID FROM actua WHERE peliculaID = {pid} ''')[0]
+    
+    print('*'*15)
+    print('actores',actores)
+    
+    for p in range(len(protagonistaID)):
+        if protagonistaID[p] not in actores:
+            loaf.query(f''' INSERT INTO actua (peliculaID, protagonistaID)
+                        VALUES ('{pid}', '{protagonistaID[p]}') ''')
+    
+    if len(protagonistaID) < len(actores):
+        for p in range(len(protagonistaID)):
+            if protagonistaID[p] not in actores:
+                loaf.query(f''' DELETE FROM actua WHERE protagonistaID = {protagonistaID[p]} AND peliculaID = {pid} ''')
+
+    # for actor in actores:
+    #     if actor not in protagonistaID:
+    #         loaf.query(f''' DELETE FROM actua WHERE protagonistaID = {actor} AND peliculaID = {pid} ''')
+    #     print('*'*15)
+    #     print('actor',actor)
+
 
     if not bool(directorID):
         loaf.query(f''' INSERT INTO director(nombre)
@@ -369,11 +422,24 @@ def modify_pelicula():
         
         directorID = loaf.query(f''' SELECT directorID FROM director WHERE nombre='{director}' ''')[0][0]
     
-    if not bool(protagonistaID):
-        loaf.query(f''' INSERT INTO protagonista(nombre)
-                        Values('{protag}')''')
+    # for p in range(len(protag)):
+    #     existe = loaf.query(f''' SELECT protagonistaID FROM protagonista WHERE nombre='{protag[p]}' ''')
+
+    #     print('*'*15)
+    #     print(protag[p])
         
-        protagonistaID = loaf.query(f''' SELECT protagonistaID FROM protagonista WHERE nombre='{protag}' ''')[0][0]
+    #     if not bool(existe):
+    #         print('*'*15)
+    #         print('No Existe')
+    #         loaf.query(f''' INSERT INTO protagonista(nombre)
+    #                         Values('{protag[p]}')''')
+
+    #     id = loaf.query(f''' SELECT protagonistaID FROM protagonista WHERE nombre='{protag[p]}' ''')[0][0]
+    #     #return jsonify(id)
+    #     protagonistaID.append(id)
+
+    print('*'*15)
+    print(protagonistaID)
 
     loaf.query(f''' UPDATE pelicula
                     SET titulo='{titulo}', ano='{anio}', duracion='{dur}' 
@@ -387,10 +453,17 @@ def modify_pelicula():
                     SET categoriaID = '{categoriaID}'
                     WHERE peliculaID = {pid} ''')
 
-    loaf.query(f''' UPDATE actua
-                    SET protagonistaID = '{protagonistaID}'
-                    WHERE peliculaID = {pid}
-                ''')
+    # actores = loaf.query(f''' SELECT protagonistaID FROM actua WHERE peliculaID = {pid}''')
+    # for id in protagonistaID:
+    #     loaf.query(f''' UPDATE actua
+    #                     SET protagonistaID = '{id}', actualizado = 1
+    #                     WHERE peliculaID = {pid} AND actualizado != 1
+    #                     LIMIT 1
+    #                 ''')
+                    
+    # loaf.query(f''' UPDATE actua
+    #                 SET actualizado = 0
+    #             ''')
     
     return jsonify({
         'success': 'True',
@@ -402,7 +475,7 @@ def buscar():
     busc = str(request.args.get('param'))
 
     # checar si busc = titulo, director o protagonista
-    q = loaf.query(''' SELECT MC2.nombre, MC2.titulo, MC2.duracion, MC2.peliculaID, MC2.ano, categoria.descripcion, MC2.categoriaID
+    peliculas = loaf.query(''' SELECT MC2.nombre, MC2.titulo, MC2.duracion, MC2.peliculaID, MC2.ano, categoria.descripcion, MC2.categoriaID
                         FROM categoria
                         INNER JOIN (SELECT categoriaID, MC.nombre, MC.titulo, MC.duracion, MC.peliculaID, MC.ano
                             FROM movie_cat INNER JOIN ( SELECT director.nombre, PD.titulo, PD.duracion, PD.peliculaID, PD.ano
@@ -420,40 +493,34 @@ def buscar():
     
     listaPeliculas = []
 
-    for i in range(len(q)):
-        tit = q[i][2]
-        dirNom = q[i][1]
+    for i in range(len(peliculas)):
         actores = []
         for actor in range(len(qActores)):
             idActor = qActores[actor][1]
-            idPeli = q[i][3]
+            idPeli = peliculas[i][3]
 
             if idActor == idPeli:
                 actores.append({
-                    'nombre: ': qActores[actor][2],
+                    'nombre': qActores[actor][2],
                     'protagID': qActores[actor][0]
                 })
-            
-            #print(idActor)
-        
-        pelicula = {
-                    'peliculaID': q[i][3],
-                    'director': q[i][0],
-                    'titulo': q[i][1],
-                    'anio': q[i][4],
-                    'categoria': q[i][5],
-                    'categoriaID': q[i][6],
-                    'duracion': str(f'{int(q[i][2])//60}:{int(q[i][2])%60}'),
-                    'protagonista': actores
-                }
+        if busc.lower() in peliculas[i][1].lower() or busc.lower() in peliculas[i][0].lower():   
+           listaPeliculas.append({
+                'peliculaID': peliculas[i][3],
+                'titulo': peliculas[i][1],
+                'anio': peliculas[i][4],
+                'director': peliculas[i][0],
+                'categoria': peliculas[i][5],
+                'categoriaID': peliculas[i][6],
+                'duracion': f'{int(peliculas[i][2])//60}:{int(peliculas[i][2])%60}',
+                'protagonista': actores
 
-        if busc.lower() in tit.lower() or busc.lower() in dirNom.lower():
-            listaPeliculas.append({
-                'Pelicula': pelicula
             })
     
-    return jsonify(listaPeliculas)
+    return jsonify({
+        'peliculas': listaPeliculas
+    })
 
-
+# if busc.lower() in tit.lower() or busc.lower() in dirNom.lower():
 if __name__ == "__main__":
     app.run(debug=True)
