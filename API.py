@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from itsdangerous import json
 import loaf
+from pymysql import ProgrammingError
 
 app = Flask(__name__)
 CORS(app)
@@ -231,7 +232,7 @@ def registrar_pelicula():
     dur = request.args.get('dur')
     director = request.args.get('director')
     categoria = request.args.get('cat')
-    protag = request.args.get('protag').replace(', ', ',').split(',')
+    protag = request.args.get('protag').replace("'",' ').replace(', ', ',').split(',')
 
     if not (titulo and anio and dur and director and categoria and protag):
         return jsonify({
