@@ -3,6 +3,7 @@ from flask_cors import CORS
 from itsdangerous import json
 import loaf
 from pymysql import ProgrammingError
+from operator import itemgetter
 
 app = Flask(__name__)
 CORS(app)
@@ -65,8 +66,10 @@ def dashboard():
                 'protagonista': actores
             })
 
+    peliculasOrdenadas = sorted(listaPeliculas, key=itemgetter('titulo'))
+
     return jsonify({
-        'peliculas': listaPeliculas
+        'peliculas': peliculasOrdenadas
     })
 
 # Obtener todas las peliculas de la misma categoria
@@ -138,9 +141,11 @@ def dashboard_filtrado():
             'protagonista': actores
 
         })
+    
+    peliculasOrdenadas = sorted(listaPeliculas, key=itemgetter('titulo'))
 
     return jsonify({
-        'peliculas': listaPeliculas
+        'peliculas': peliculasOrdenadas
     })
 
 @app.route('/get_categorias')
@@ -232,7 +237,7 @@ def registrar_pelicula():
     dur = request.args.get('dur')
     director = request.args.get('director')
     categoria = request.args.get('cat')
-    protag = request.args.get('protag').replace("'",' ').replace(', ', ',').split(',')
+    protag = request.args.get('protag').replace("'",'\'').replace(', ', ',').split(',')
 
     if not (titulo and anio and dur and director and categoria and protag):
         return jsonify({
@@ -372,6 +377,7 @@ def modify_pelicula():
             'success': 'False',
             'message': 'Faltan campos'
         })
+        
     try:
         dur = dur.split(':')
         dur = int(dur[0]) * 60 + int(dur[1])
@@ -379,6 +385,12 @@ def modify_pelicula():
         return jsonify({
             'success': 'False',
             'message': 'Duracion Invalida'
+        })
+    
+    if dur < 30:
+        return jsonify({
+            'success': 'False',
+            'message': 'Duracion invalida',
         })
     
     directorID = loaf.query(f''' SELECT directorID FROM director WHERE nombre='{director}' ''')[0][0]
@@ -488,8 +500,10 @@ def buscar():
 
             })
     
+    peliculasOrdenadas = sorted(listaPeliculas, key=itemgetter('titulo'))
+
     return jsonify({
-        'peliculas': listaPeliculas
+        'peliculas': peliculasOrdenadas
     })
 
 # if busc.lower() in tit.lower() or busc.lower() in dirNom.lower():
